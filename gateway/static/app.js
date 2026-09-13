@@ -21,30 +21,45 @@
   const LANG_KEY = 'zumg_lang';
 
   const i18n = {
+    // First visit follows the browser language (zh/ja detected, anything
+    // else falls back to English); an explicit pick via the switcher is
+    // remembered and always wins over the detection.
     lang: (function () {
       const stored = localStorage.getItem(LANG_KEY);
-      if (stored === 'zh' || stored === 'en') return stored;
-      return (navigator.language || '').toLowerCase().startsWith('zh') ? 'zh' : 'en';
+      if (stored === 'zh' || stored === 'en' || stored === 'ja') return stored;
+      const nav = (navigator.language || '').toLowerCase();
+      if (nav.startsWith('zh')) return 'zh';
+      if (nav.startsWith('ja')) return 'ja';
+      return 'en';
     })(),
     // Longest-first, so a more specific key wins over a shorter one that
     // happens to share a prefix.
-    prefixes: [],
+    prefixes: {},
   };
 
+  function tableFor(lang) {
+    if (!window.ZUMG_I18N) return {};
+    if (lang === 'en') return window.ZUMG_I18N.zhToEn || {};
+    if (lang === 'ja') return window.ZUMG_I18N.zhToJa || {};
+    return {};
+  }
+
   (function initPrefixes() {
-    const table = (window.ZUMG_I18N && window.ZUMG_I18N.zhToEn) || {};
-    i18n.prefixes = Object.keys(table).sort((a, b) => b.length - a.length);
+    ['en', 'ja'].forEach((lang) => {
+      i18n.prefixes[lang] = Object.keys(tableFor(lang))
+        .sort((a, b) => b.length - a.length);
+    });
   })();
 
   function t(text) {
-    if (i18n.lang !== 'en' || typeof text !== 'string' || !text) return text;
-    const table = (window.ZUMG_I18N && window.ZUMG_I18N.zhToEn) || {};
+    if (i18n.lang === 'zh' || typeof text !== 'string' || !text) return text;
+    const table = tableFor(i18n.lang);
     if (Object.prototype.hasOwnProperty.call(table, text)) return table[text];
     // Messages are often built by concatenation ('复制失败：' + detail), so
     // fall back to translating the longest known prefix. Dynamic values are
     // rarely Chinese, which keeps accidental rewrites unlikely; a miss simply
     // leaves the text as-is.
-    for (const key of i18n.prefixes) {
+    for (const key of i18n.prefixes[i18n.lang] || []) {
       if (text.length > key.length && text.startsWith(key)) {
         return table[key] + text.slice(key.length);
       }
@@ -54,12 +69,12 @@
 
   function translateTo(text, lang) {
     if (lang === 'zh' || typeof text !== 'string' || !text) return text;
-    const table = (window.ZUMG_I18N && window.ZUMG_I18N.zhToEn) || {};
+    const table = tableFor(lang);
     return Object.prototype.hasOwnProperty.call(table, text) ? table[text] : text;
   }
 
   function setLang(lang) {
-    if (lang !== 'zh' && lang !== 'en') return;
+    if (lang !== 'zh' && lang !== 'en' && lang !== 'ja') return;
     if (lang === i18n.lang) return;
     i18n.lang = lang;
     try { localStorage.setItem(LANG_KEY, lang); } catch (e) { /* private mode */ }
@@ -70,13 +85,13 @@
     if (active) showView(active.dataset.view);
   }
 
+  const HTML_LANG = { zh: 'zh-CN', en: 'en', ja: 'ja' };
+
   function updateLangToggle() {
-    const button = document.getElementById('lang-toggle');
-    if (!button) return;
-    // Label shows the language you would switch TO.
-    button.textContent = i18n.lang === 'zh' ? 'English' : '中文';
-    button.title = i18n.lang === 'zh' ? 'Switch to English' : '切换到中文';
-    document.documentElement.lang = i18n.lang === 'zh' ? 'zh-CN' : 'en';
+    document.querySelectorAll('#lang-switch .lang-btn').forEach((button) => {
+      button.classList.toggle('active', button.dataset.lang === i18n.lang);
+    });
+    document.documentElement.lang = HTML_LANG[i18n.lang] || 'zh-CN';
   }
 
   // -- static markup translation ------------------------------------------
@@ -1785,7 +1800,9 @@
     collectStaticText(document.body);
     renderStaticText();
     updateLangToggle();
-    $('#lang-toggle').addEventListener('click', () => setLang(i18n.lang === 'zh' ? 'en' : 'zh'));
+    document.querySelectorAll('#lang-switch .lang-btn').forEach((button) => {
+      button.addEventListener('click', () => setLang(button.dataset.lang));
+    });
 
     initNav();
     $('#copy-base-url').addEventListener('click', () => copyText($('#zcode-base-url').value));

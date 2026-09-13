@@ -10,7 +10,28 @@ from gateway import i18n
 def test_catalog_has_matching_keys():
     zh = set(i18n._CATALOG["zh"])
     en = set(i18n._CATALOG["en"])
-    assert zh == en, f"catalog keys differ: {zh ^ en}"
+    ja = set(i18n._CATALOG["ja"])
+    assert zh == en == ja, f"catalog keys differ: {zh ^ en ^ ja}"
+
+
+def test_japanese_catalog_translates_representative_keys():
+    """The ja catalog must be real Japanese, not the zh/en text leaked through."""
+    token = i18n.set_locale("ja")
+    try:
+        assert i18n.tr("model.unknown", model="nope") == "不明なモデル 'nope'"
+        assert i18n.tr("model.none_in_request") == "リクエストに model パラメータがありません"
+        rendered = i18n.tr("provider.not_found")
+        assert rendered == "プロバイダーが見つかりません"
+        # Spot-check user-facing keys so a leaked zh/en template cannot hide.
+        assert i18n.tr("model.disabled", model="m") == "モデル 'm' は無効化されています"
+        assert i18n.tr("provider.disabled", provider="p") == "プロバイダー 'p' は無効化されています"
+        assert i18n.tr("config.invalid", error="boom") == "設定が無効です: boom"
+        assert (
+            i18n.tr("auth.no_key", provider="p")
+            == "プロバイダー 'p' に API Key が設定されていません。"
+        )
+    finally:
+        i18n.reset_locale(token)
 
 
 def test_catalog_messages_render_in_both_locales():
@@ -35,6 +56,8 @@ def test_normalize_and_resolve_locale():
     assert i18n.normalize_locale("zh_Hans") == "zh"
     assert i18n.normalize_locale("en-US") == "en"
     assert i18n.normalize_locale("EN") == "en"
+    assert i18n.normalize_locale("ja") == "ja"
+    assert i18n.normalize_locale("ja-JP") == "ja"
     assert i18n.normalize_locale("fr") is None
     assert i18n.normalize_locale("") is None
     assert i18n.normalize_locale(None) is None
@@ -44,8 +67,9 @@ def test_normalize_and_resolve_locale():
     assert i18n.resolve_locale("") == "zh"
     assert i18n.resolve_locale("zh-CN,zh;q=0.9,en;q=0.8") == "zh"
     assert i18n.resolve_locale("en-US,en;q=0.9") == "en"
-    # An unsupported language falls back to English rather than Chinese.
-    assert i18n.resolve_locale("ja") == "en"
+    assert i18n.resolve_locale("ja-JP,ja;q=0.9") == "ja"
+    # An unsupported language still falls back to English rather than Chinese.
+    assert i18n.resolve_locale("fr") == "en"
 
 
 async def test_api_errors_follow_accept_language(build_app, client_factory):
@@ -55,14 +79,17 @@ async def test_api_errors_follow_accept_language(build_app, client_factory):
     body = {"model": "nope", "body": {"input": "x"}}
     zh = await client.post("/api/admin/compare", json=body, headers={"accept-language": "zh-CN"})
     en = await client.post("/api/admin/compare", json=body, headers={"accept-language": "en"})
+    ja = await client.post("/api/admin/compare", json=body, headers={"accept-language": "ja-JP"})
     default = await client.post("/api/admin/compare", json=body)
 
-    assert zh.status_code == en.status_code == default.status_code == 404
+    assert zh.status_code == en.status_code == ja.status_code == default.status_code == 404
     zh_message = zh.json()["detail"]["error"]["message"]
     en_message = en.json()["detail"]["error"]["message"]
+    ja_message = ja.json()["detail"]["error"]["message"]
 
     assert zh_message == "未知模型 'nope'"
     assert en_message == "unknown model 'nope'"
+    assert ja_message == "不明なモデル 'nope'"
     assert default.json()["detail"]["error"]["message"] == zh_message
 
 

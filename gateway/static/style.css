@@ -71,7 +71,9 @@ a { color: var(--accent); }
 .brand { font-weight: 650; letter-spacing: 0.2px; }
 .brand .ver { color: var(--muted); font-weight: 400; font-size: 12px; margin-left: 8px; }
 .topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
-#lang-toggle { min-width: 74px; text-align: center; }
+#lang-switch { display: inline-flex; gap: 2px; }
+.lang-btn { min-width: 46px; text-align: center; }
+.lang-btn.active { border-color: var(--accent, #4f7cff); color: var(--accent, #4f7cff); font-weight: 600; }
 #nav-toggle { display: none; background: none; border: 1px solid var(--border); border-radius: 8px; padding: 4px 10px; cursor: pointer; }
 
 /* ---------- layout ---------- */

@@ -8,12 +8,14 @@ returned — only availability status.
 
 from __future__ import annotations
 
+import hmac
 import json
 import os
 import time
 from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi.responses import PlainTextResponse, Response, StreamingResponse
@@ -43,9 +45,56 @@ ADMIN_TOKEN_ENV = "GATEWAY_ADMIN_TOKEN"
 BUNDLE_FORMAT = "zumg.bundle.v1"
 BUNDLE_VERSION = 1
 
+#: Responses that can contain credentials must never be cached anywhere.
+NO_STORE = "no-store"
+
+
+def _is_loopback_host(host: str) -> bool:
+    """True for ``localhost``, ``127.0.0.0/8`` and ``::1`` forms."""
+    hostname = host.rsplit(":", 1)[0] if host.count(":") == 1 else host
+    hostname = hostname.strip("[]").lower()
+    if hostname in ("localhost", "::1"):
+        return True
+    return hostname.startswith("127.")
+
+
+def _same_origin(request: Request) -> bool:
+    """Reject cross-site browser requests against the admin API.
+
+    A malicious web page can issue requests to a loopback gateway even without
+    reading the response (classic CSRF), and a DNS-rebinding page can make its
+    requests look same-origin. Non-browser clients (curl, ZCode) send no
+    ``Origin`` header and are unaffected.
+
+    Two cheap checks:
+
+    1. an ``Origin`` header, when present, must match the ``Host`` header;
+    2. when the server is bound to a loopback address, the ``Host`` header must
+       also be a loopback form (blocks DNS rebinding in the default setup).
+    """
+    origin = request.headers.get("origin")
+    host = request.headers.get("host")
+    if origin:
+        if not host:
+            return False
+        origin_netloc = urlsplit(origin).netloc.lower()
+        if origin_netloc and origin_netloc != host.lower():
+            return False
+    server = request.scope.get("server") or ("", 0)
+    if _is_loopback_host(str(server[0])) and host and not _is_loopback_host(host):
+        return False
+    return True
+
 
 def require_admin(request: Request) -> None:
-    """Enforce ``GATEWAY_ADMIN_TOKEN`` when it is configured."""
+    """Guard every admin endpoint with two independent layers.
+
+    - same-origin/Host validation (always on — this is what keeps a random web
+      page from driving the admin API of a token-less loopback gateway);
+    - ``GATEWAY_ADMIN_TOKEN`` when it is configured.
+    """
+    if not _same_origin(request):
+        raise HTTPException(status_code=403, detail=tr("admin.cross_site_denied"))
     expected = os.environ.get(ADMIN_TOKEN_ENV)
     if not expected:
         return
@@ -54,7 +103,7 @@ def require_admin(request: Request) -> None:
         auth = request.headers.get("authorization", "")
         if auth.lower().startswith("bearer "):
             supplied = auth[7:].strip()
-    if not supplied or supplied != expected:
+    if not supplied or not hmac.compare_digest(supplied, expected):
         raise HTTPException(status_code=401, detail=tr("admin.token_required"))
 
 
@@ -543,7 +592,10 @@ def build_admin_router(
         return PlainTextResponse(
             manager.config.to_yaml(),
             media_type="application/x-yaml",
-            headers={"content-disposition": 'attachment; filename="config.yaml"'},
+            headers={
+                "content-disposition": 'attachment; filename="config.yaml"',
+                "cache-control": NO_STORE,
+            },
         )
 
     @api.post("/config/upload")
@@ -595,7 +647,8 @@ def build_admin_router(
             content=json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
             media_type="application/json",
             headers={
-                "content-disposition": 'attachment; filename="zumg-backup.json"'
+                "content-disposition": 'attachment; filename="zumg-backup.json"',
+                "cache-control": NO_STORE,
             },
         )
 

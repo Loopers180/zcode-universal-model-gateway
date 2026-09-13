@@ -2,6 +2,11 @@
 
 **中文** | [English](README.en.md)
 
+![License](https://img.shields.io/badge/license-MIT-green)
+![Python](https://img.shields.io/badge/python-3.11%2B-blue)
+![Stars](https://img.shields.io/github/stars/Loopers180/zcode-universal-model-gateway?style=social)
+![Last Commit](https://img.shields.io/github/last-commit/Loopers180/zcode-universal-model-gateway/main)
+
 一个本地运行的 **OpenAI Responses 兼容** 网关。ZCode 只需连接一个本地地址
 （`http://127.0.0.1:8787/v1`），网关负责把请求转发到你在配置里指定的上游服务商
 ——OpenAI Responses、OpenAI Chat Completions、Anthropic Messages，或任何
@@ -582,3 +587,17 @@ Key）同样被 git 忽略。
   无法据此确认档位是否生效；Anthropic 协议目前把 `reasoning_tokens` 记为 0。
 - 启动脚本的提示信息保持 ASCII（避免 Windows 批处理的代码页问题），中文启动横幅由
   Python 打印。
+
+## Star 历史
+
+[![Star History Chart](https://api.star-history.com/svg?repos=Loopers180/zcode-universal-model-gateway&type=Date)](https://star-history.com/#Loopers180/zcode-universal-model-gateway&Date)
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=Loopers180/zcode-universal-model-gateway&type=Date&theme=dark" />
+  <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=Loopers180/zcode-universal-model-gateway&type=Date" />
+  <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=Loopers180/zcode-universal-model-gateway&type=Date" />
+</picture>
+
+## 许可证
+
+本项目基于 [MIT License](LICENSE) 开源。Copyright © 2026 Linxuan Fang.

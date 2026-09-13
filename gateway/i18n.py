@@ -1,9 +1,9 @@
 """Message catalog and request-scoped locale.
 
-Chinese is the default language; English is selected per request via the
-``Accept-Language`` header (the Web UI sends the language the user picked).
-The startup banner and other pre-request output follow ``GATEWAY_LANG``
-(``zh`` or ``en``), defaulting to Chinese.
+Chinese is the default language; English or Japanese is selected per request
+via the ``Accept-Language`` header (the Web UI sends the language the user
+picked). The startup banner and other pre-request output follow
+``GATEWAY_LANG`` (``zh``, ``en`` or ``ja``), defaulting to Chinese.
 
 Messages use ``str.format`` placeholders, e.g. ``tr("model.unknown", model="x")``
 against ``"未知模型 {model!r}"``. Keeping messages in one catalog means both
@@ -17,7 +17,7 @@ import contextvars
 import os
 
 DEFAULT_LOCALE = "zh"
-SUPPORTED_LOCALES = ("zh", "en")
+SUPPORTED_LOCALES = ("zh", "en", "ja")
 
 _locale: contextvars.ContextVar[str] = contextvars.ContextVar(
     "zumg_locale", default=DEFAULT_LOCALE
@@ -101,6 +101,7 @@ _CATALOG: dict[str, dict[str, str]] = {
         "auth.no_key": "服务商 {provider!r} 尚未配置 API Key。",
         # -- admin API --------------------------------------------------
         "admin.token_required": "需要有效的管理 Token，或 Token 不正确",
+        "admin.cross_site_denied": "跨站请求被拒绝",
         "provider.id_empty": "服务商 ID 不能为空",
         "provider.id_at": "服务商 ID 不能包含 '@'",
         "provider.exists": "该服务商已存在",
@@ -234,6 +235,7 @@ _CATALOG: dict[str, dict[str, str]] = {
         "auth.no_key": "provider {provider!r} has no API key configured.",
         # -- admin API --------------------------------------------------
         "admin.token_required": "a valid admin token is required, or the token is incorrect",
+        "admin.cross_site_denied": "cross-site request denied",
         "provider.id_empty": "provider ID must not be empty",
         "provider.id_at": "provider ID must not contain '@'",
         "provider.exists": "provider already exists",
@@ -267,6 +269,156 @@ _CATALOG: dict[str, dict[str, str]] = {
         "compare.upstream_failed": "upstream returned response.failed",
         # -- misc -------------------------------------------------------
         "common.none": "(none)",
+    },
+    "ja": {
+        # -- startup ----------------------------------------------------
+        "startup.generated_config": "{example} から {target} を生成しました",
+        "banner.admin_ui": "  管理UI  : {url}",
+        "banner.zcode_url": "  ZCode URL : {url}",
+        "banner.stop": "  Ctrl+C で停止します。",
+        # -- config -----------------------------------------------------
+        "config.unsupported_protocol": (
+            "サポートされていないプロトコル {protocol!r}（サポート対象: {supported}）"
+        ),
+        "config.base_url_empty": "base_url は空にできません",
+        "config.base_url_scheme": "base_url は http:// または https:// で始まる必要があります",
+        "config.provider_no_path": "プロバイダーに {kind!r} 用のパスが設定されていません",
+        "config.level_name_empty": "思考レベル名は空にできません",
+        "config.level_name_at": "思考レベル名 {level!r} に '@' は含められません",
+        "config.mapping_not_object": (
+            "思考レベル {level!r} の mapping はオブジェクトである必要があります"
+        ),
+        "config.default_level_unknown": (
+            "デフォルトの思考レベル {default!r} はサポート対象のレベル {supported} に含まれていません"
+        ),
+        "config.mapping_unknown_levels": (
+            "reasoning mapping に supported に列挙されていないレベルが含まれています: {levels}"
+        ),
+        "config.invalid_identifier": (
+            "識別子 {key!r} が無効です: 空にできず、'@' も含められません"
+        ),
+        "config.model_unknown_provider": (
+            "モデル {model!r} が存在しないプロバイダー {provider!r} を参照しています"
+        ),
+        "config.root_not_mapping": "設定ファイルのルートはマッピング/オブジェクトである必要があります",
+        "config.invalid": "設定が無効です: {error}",
+        "config.yaml_parse_error": "YAML 解析エラー: {error}",
+        "config.file_not_found": "設定ファイルが見つかりません: {path}",
+        "config.file_unreadable": "設定ファイル {path} を読み込めません: {error}",
+        # -- model resolution -------------------------------------------
+        "model.none_in_request": "リクエストに model パラメータがありません",
+        "model.unknown": "不明なモデル {model!r}",
+        "model.disabled": "モデル {model!r} は無効化されています",
+        "model.unknown_provider": (
+            "モデル {model!r} が存在しないプロバイダー {provider!r} を参照しています"
+        ),
+        "model.no_reasoning": "モデル {model!r} は思考レベルに対応していません",
+        "model.level_unsupported": (
+            "モデル {model!r} は思考レベル {level!r} に対応していません; "
+            "サポート対象: {supported}"
+        ),
+        "provider.disabled": "プロバイダー {provider!r} は無効化されています",
+        # -- upstream / router ------------------------------------------
+        "upstream.timeout": "上流プロバイダー {provider!r} がタイムアウトしました",
+        "upstream.request_failed": "上流リクエストが失敗しました: {error}",
+        "upstream.invalid_json": "上流のレスポンスボディが有効な JSON ではありません",
+        "upstream.http_error": "上流が HTTP {status} を返しました",
+        # -- app / request body -----------------------------------------
+        "app.started": (
+            "ZUMG {version} を起動しました; 設定={config} プロバイダー={providers} モデル={models}"
+        ),
+        "app.internal_error": "予期しない内部エラーが発生しました",
+        "app.bad_json": "リクエストボディは有効な JSON である必要があります: {error}",
+        "app.body_not_object": "リクエストボディは JSON オブジェクトである必要があります",
+        # -- adapters (shared) ------------------------------------------
+        "adapter.unsupported_param": (
+            "パラメータ {field!r} は、意味を変えずにこのプロバイダーのプロトコルへ変換できません"
+        ),
+        "adapter.input_not_string_or_array": "'input' は文字列または入力項目の配列である必要があります",
+        "adapter.item_not_object": "各入力項目はオブジェクトである必要があります",
+        "adapter.tool_not_object": "各 tool はオブジェクトである必要があります",
+        "adapter.tool_choice_no_name": "tool_choice の function に 'name' がありません",
+        "adapter.invalid_tool_choice": "無効な tool_choice です",
+        "adapter.unknown_tool_choice": "不明な tool_choice {choice!r}",
+        "adapter.no_input_messages": "リクエストに入力メッセージがありません",
+        "adapter.upstream_not_json_object": "上流のレスポンスが JSON オブジェクトではありません",
+        "adapter.stream_error": "上流のストリーミングレスポンスでエラーが発生しました",
+        "adapter.stream_translate_failed": "ストリーム変換に失敗しました: {error}",
+        # -- adapters (chat) --------------------------------------------
+        "chat.image_no_url": (
+            "URL のない input_image（file_id のみ指定の場合など）は "
+            "Chat Completions へ変換できません"
+        ),
+        "chat.block_type": (
+            "コンテンツブロックタイプ {type!r} は Chat Completions へ変換できません"
+        ),
+        "chat.item_type": "入力項目タイプ {type!r} は Chat Completions へ変換できません",
+        "chat.tool_type": "tool タイプ {type!r} は Chat Completions へ変換できません",
+        "chat.tool_choice_type": (
+            "tool_choice タイプ {type!r} は Chat Completions へ変換できません"
+        ),
+        "chat.text_format_type": (
+            "text.format タイプ {type!r} は Chat Completions へ変換できません"
+        ),
+        # -- adapters (anthropic) ---------------------------------------
+        "anthropic.image_no_url": (
+            "URL のない画像コンテンツは Anthropic Messages へ変換できません"
+        ),
+        "anthropic.data_url_malformed": "画像コンテンツ内の data URL の形式が不正です",
+        "anthropic.block_type": (
+            "コンテンツブロックタイプ {type!r} は Anthropic Messages へ変換できません"
+        ),
+        "anthropic.item_type": (
+            "入力項目タイプ {type!r} / ロール {role!r} は Anthropic Messages へ変換できません"
+        ),
+        "anthropic.tool_args_not_json": (
+            "ツール呼び出しの引数が有効な JSON ではないため、Anthropic Messages へ変換できません"
+        ),
+        "anthropic.tool_type": "tool タイプ {type!r} は Anthropic Messages へ変換できません",
+        "anthropic.tool_choice_type": (
+            "tool_choice タイプ {type!r} は Anthropic Messages へ変換できません"
+        ),
+        # -- auth -------------------------------------------------------
+        "auth.env_missing": "環境変数 {env} が設定されていません。",
+        "auth.no_key": "プロバイダー {provider!r} に API Key が設定されていません。",
+        # -- admin API --------------------------------------------------
+        "admin.token_required": "有効な管理トークンが必要です、またはトークンが正しくありません",
+        "admin.cross_site_denied": "クロスサイトリクエストは拒否されました",
+        "provider.id_empty": "プロバイダー ID は空にできません",
+        "provider.id_at": "プロバイダー ID に '@' は含められません",
+        "provider.exists": "このプロバイダーは既に存在します",
+        "provider.not_found": "プロバイダーが見つかりません",
+        "provider.in_use": (
+            "このプロバイダーは次のモデルから参照されています: {models}。"
+            "先にこれらのモデルを削除するか、まとめて削除してください。"
+        ),
+        "provider.target_exists": "対象のプロバイダー ID は既に存在します",
+        "provider.invalid_config": "プロバイダー設定が無効です: {error}",
+        "provider.unknown": "不明なプロバイダー {provider!r}",
+        "model.id_empty": "モデル ID は空にできません",
+        "model.id_at": "モデル ID に '@' は含められません",
+        "model.exists": "このモデルは既に存在します",
+        "model.not_found": "モデルが見つかりません",
+        "model.target_exists": "対象のモデル ID は既に存在します",
+        "model.provider_not_found": "このモデルのプロバイダーが見つかりません",
+        "model.invalid_config": "モデル設定が無効です: {error}",
+        "request.model_required": "model は必須です",
+        "request.yaml_required": "'yaml' フィールドは必須です",
+        "config.example_not_found": "config.example.yaml が見つかりません",
+        "bundle.bad_format": "有効な完全バックアップファイルではありません（format マーカーがありません）",
+        "bundle.no_config": "バックアップファイルに config 内容がありません",
+        "bundle.bad_keys": "バックアップファイルの 'keys' フィールドの形式が不正です",
+        "bundle.foreign_keys": (
+            "バックアップファイルに、設定に存在しないプロバイダーの Key が含まれています: {providers}"
+        ),
+        # -- comparison -------------------------------------------------
+        "compare.no_levels": (
+            "モデル {model!r} には思考レベルが設定されていないため、比較できません"
+        ),
+        "compare.no_levels_selected": "思考レベルが選択されていません",
+        "compare.upstream_failed": "上流が response.failed を返しました",
+        # -- misc -------------------------------------------------------
+        "common.none": "（なし）",
     },
 }
 

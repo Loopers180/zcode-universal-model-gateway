@@ -2,6 +2,11 @@
 
 [中文](README.md) | **English**
 
+![License](https://img.shields.io/badge/license-MIT-green)
+![Python](https://img.shields.io/badge/python-3.11%2B-blue)
+![Stars](https://img.shields.io/github/stars/Loopers180/zcode-universal-model-gateway?style=social)
+![Last Commit](https://img.shields.io/github/last-commit/Loopers180/zcode-universal-model-gateway/main)
+
 A locally-run **OpenAI Responses-compatible** gateway. ZCode only needs to point at
 one local address (`http://127.0.0.1:8787/v1`); the gateway forwards requests to the
 upstream providers you define in configuration — OpenAI Responses, OpenAI Chat
@@ -666,3 +671,13 @@ by "Save locally" in the UI) is git-ignored as well.
 ## License
 
 Released under the [MIT License](LICENSE). Copyright © 2026 Linxuan Fang.
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=Loopers180/zcode-universal-model-gateway&type=Date)](https://star-history.com/#Loopers180/zcode-universal-model-gateway&Date)
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=Loopers180/zcode-universal-model-gateway&type=Date&theme=dark" />
+  <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=Loopers180/zcode-universal-model-gateway&type=Date" />
+  <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=Loopers180/zcode-universal-model-gateway&type=Date" />
+</picture>

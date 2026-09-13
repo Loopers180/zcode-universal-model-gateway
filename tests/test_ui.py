@@ -27,11 +27,13 @@ async def test_compare_ui_present_in_assets(build_app, client_factory):
 
 
 async def test_language_toggle_is_wired(build_app, client_factory):
-    """The UI ships a zh/en switch and loads its translation table."""
+    """The UI ships a zh/en/ja switch and loads its translation tables."""
     harness = build_app()
     client = client_factory(harness.app)
     html = (await client.get("/")).text
-    assert 'id="lang-toggle"' in html
+    assert 'id="lang-switch"' in html
+    for lang in ("zh", "en", "ja"):
+        assert f'data-lang="{lang}"' in html
     assert "/static/i18n.js" in html
 
     js = (await client.get("/static/app.js")).text
@@ -41,6 +43,8 @@ async def test_language_toggle_is_wired(build_app, client_factory):
     table = (await client.get("/static/i18n.js")).text
     assert "zhToEn" in table
     assert "enToZh" in table
+    assert "zhToJa" in table
+    assert "jaToZh" in table
 
 
 async def test_i18n_table_covers_ui_strings(build_app, client_factory):
@@ -68,6 +72,29 @@ async def test_i18n_table_covers_ui_strings(build_app, client_factory):
             if cjk_re.search(text) and text not in table and text not in skip:
                 missing.add(text)
     assert not missing, f"UI strings without a translation: {sorted(missing)}"
+
+
+async def test_i18n_ja_table_covers_all_en_keys(build_app, client_factory):
+    """The Japanese table must translate every key the English table has."""
+    import json
+    import re
+
+    harness = build_app()
+    client = client_factory(harness.app)
+    table_text = (await client.get("/static/i18n.js")).text
+    en_match = re.search(r"const ZH_TO_EN = (\{.*?\n\});", table_text, re.S)
+    ja_match = re.search(r"const ZH_TO_JA = (\{.*?\n\});", table_text, re.S)
+    assert en_match and ja_match, "generated tables not found"
+    en_table = json.loads(en_match.group(1))
+    ja_table = json.loads(ja_match.group(1))
+
+    assert set(ja_table) == set(en_table), (
+        f"ja table keys differ: {set(ja_table) ^ set(en_table)}"
+    )
+    # No value may be a lazy copy of the English value. (Kanji shared with the
+    # Chinese source is fine — words like 保存/停止 are genuine Japanese.)
+    copied_en = [k for k, v in ja_table.items() if v == en_table[k]]
+    assert not copied_en, f"ja values identical to English: {sorted(copied_en)}"
 
 
 async def test_ui_alias_serves_html(build_app, client_factory):
